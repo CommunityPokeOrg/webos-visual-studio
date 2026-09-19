@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Visual Studio for webOS</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="stylesheet" href="css/webos.css">
+    <link rel="stylesheet" href="css/vs.css">
+</head>
+<body>
+    <div id="wallpaper">
+        <div id="statusbar">
+            <span id="sb-left">webOS</span>
+            <span id="sb-right">
+                <span class="sb-icon">webOS</span>
+                <span id="sb-clock"></span>
+            </span>
+        </div>
+        <div id="justtype">
+            <input id="justtype-input" type="text" placeholder="Just type..." autocomplete="off">
+        </div>
+        <div id="stage"></div>
+        <div id="launcher"></div>
+        <div id="gesturebar" title="Gesture area — tap for card view"></div>
+    </div>
+    <script src="js/projects.js"></script>
+    <script src="js/ide.js"></script>
+    <script src="js/webos.js"></script>
+</body>
+</html>

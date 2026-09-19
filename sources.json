@@ -1,0 +1,5 @@
+[
+    { "source": "js/projects.js" },
+    { "source": "js/ide.js" },
+    { "source": "js/webos.js" }
+]
