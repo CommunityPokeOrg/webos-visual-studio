@@ -1,4 +1,22 @@
-/* Visual Studio 2010-era chrome, adapted to a webOS card */
+/* Visual Studio for webOS — stylesheet
+ * IDE chrome is VS2010-flavored; dialog markup uses Mojo palm-* classes. */
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+    height: 100%;
+    overflow: hidden;
+    font-family: "Prelude", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.palm-scene, #vs-root {
+    position: absolute;
+    top: 0; right: 0; bottom: 0; left: 0;
+}
+
+/* ---- IDE root ----------------------------------------------------------- */
 
 .vs-root {
     position: absolute;
@@ -15,13 +33,13 @@
 /* ---- menu bar --------------------------------------------------------- */
 
 .vs-menubar {
+    background: -webkit-gradient(linear, left top, left bottom, from(#fdfdfd), to(#e7e7ea));
     background: linear-gradient(#fdfdfd, #e7e7ea);
     border-bottom: 1px solid #c8c8cc;
     padding: 3px 8px;
-    display: flex;
-    gap: 2px;
 }
 .vs-menu-item {
+    display: inline-block;
     padding: 3px 9px;
     border-radius: 3px;
     cursor: default;
@@ -41,41 +59,45 @@
 .vs-menu-row {
     display: flex;
     justify-content: space-between;
-    gap: 24px;
     padding: 5px 16px;
     white-space: nowrap;
 }
+.vs-menu-key { margin-left: 24px; color: #888; }
 .vs-menu-row:hover { background: #cde3f6; }
-.vs-menu-key { color: #888; }
 .vs-menu-sep { height: 1px; background: #d4d4d8; margin: 3px 10px; }
 
 /* ---- toolbar ----------------------------------------------------------- */
 
 .vs-toolbar {
     display: flex;
-    align-items: center;
-    gap: 4px;
     padding: 4px 8px;
+    background: -webkit-gradient(linear, left top, left bottom, from(#f5f5f7), to(#e2e2e6));
     background: linear-gradient(#f5f5f7, #e2e2e6);
     border-bottom: 1px solid #c0c0c4;
 }
 .vs-tool {
     border: 1px solid #b5b5bb;
+    background: -webkit-gradient(linear, left top, left bottom, from(#ffffff), to(#e9e9ed));
     background: linear-gradient(#ffffff, #e9e9ed);
     border-radius: 3px;
     padding: 4px 12px;
+    margin-right: 4px;
     font-size: 12px;
     cursor: pointer;
 }
 .vs-tool:hover { background: #dbebfb; border-color: #7eb4ea; }
-.vs-tool-run { border-color: #5c8a3c; background: linear-gradient(#e8f5dd, #d2ecc2); }
+.vs-tool-run {
+    border-color: #5c8a3c;
+    background: -webkit-gradient(linear, left top, left bottom, from(#e8f5dd), to(#d2ecc2));
+    background: linear-gradient(#e8f5dd, #d2ecc2);
+}
 .vs-tool-sep { width: 1px; height: 20px; background: #b8b8be; margin: 0 6px; }
-.vs-tool-flex { flex: 1; }
-.vs-tool-proj { color: #555; font-style: italic; padding-right: 6px; }
+.vs-tool-flex { -webkit-box-flex: 1; flex: 1; }
+.vs-tool-proj { color: #555; font-style: italic; padding: 5px 6px 0 0; }
 
 /* ---- main region -------------------------------------------------------- */
 
-.vs-main { flex: 1; display: flex; min-height: 0; }
+.vs-main { -webkit-box-flex: 1; flex: 1; display: flex; min-height: 0; }
 
 .vs-explorer {
     width: 200px;
@@ -91,19 +113,19 @@
     background: #e4e4e8;
     border-bottom: 1px solid #c8c8cc;
 }
-.vs-tree { flex: 1; overflow: auto; padding: 4px 0; }
+.vs-tree { -webkit-box-flex: 1; flex: 1; overflow: auto; padding: 4px 0; }
 .tree-node { padding: 2px 8px; white-space: nowrap; cursor: default; overflow: hidden; text-overflow: ellipsis; }
 .tree-sol { font-weight: bold; }
-.tree-proj { padding-left: 20px; font-weight: normal; }
+.tree-proj { padding-left: 20px; }
 .tree-startup { font-weight: bold; }
 .tree-file { padding-left: 38px; color: #333; }
 .tree-file:hover { background: #d8e9f9; }
-.tree-json::before { content: "{ } "; color: #8a6d00; font-size: 10px; }
-.tree-html::before { content: "<> "; color: #7a3ea0; font-size: 10px; }
-.tree-text::before { content: "≡ "; color: #666; font-size: 10px; }
-.tree-javascript::before { content: "JS "; color: #c09000; font-size: 10px; font-weight: bold; }
+.tree-json:before { content: "{ } "; color: #8a6d00; font-size: 10px; }
+.tree-html:before { content: "<> "; color: #7a3ea0; font-size: 10px; }
+.tree-text:before { content: "≡ "; color: #666; font-size: 10px; }
+.tree-javascript:before { content: "JS "; color: #c09000; font-size: 10px; font-weight: bold; }
 
-.vs-center { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.vs-center { -webkit-box-flex: 1; flex: 1; display: flex; flex-direction: column; min-width: 0; }
 
 /* ---- tabs ---------------------------------------------------------------- */
 
@@ -115,8 +137,6 @@
 }
 .vs-tab {
     display: flex;
-    align-items: center;
-    gap: 6px;
     padding: 5px 12px;
     border-right: 1px solid #b8b8bc;
     background: #e8e8ec;
@@ -128,13 +148,14 @@
     border-top: 2px solid #007acc;
     padding-top: 3px;
 }
+.vs-tab-name { padding-right: 6px; }
 .vs-tab-x { color: #999; padding: 0 2px; }
 .vs-tab-x:hover { color: #c00; }
 
 /* ---- editor --------------------------------------------------------------- */
 
 .vs-editor-wrap {
-    flex: 1;
+    -webkit-box-flex: 1; flex: 1;
     display: flex;
     position: relative;
     background: #fff;
@@ -145,7 +166,6 @@
     background: #f7f7f7;
     border-right: 1px solid #e0e0e4;
     overflow: hidden;
-    flex-shrink: 0;
 }
 .vs-gutter-pre {
     font: 12px/1.45 Consolas, "DejaVu Sans Mono", Menlo, monospace;
@@ -154,7 +174,7 @@
     padding: 8px 8px 8px 0;
     margin: 0;
 }
-.vs-editor-scroll { flex: 1; position: relative; overflow: hidden; }
+.vs-editor-scroll { -webkit-box-flex: 1; flex: 1; position: relative; overflow: hidden; }
 .vs-highlight {
     position: absolute;
     top: 0; left: 0;
@@ -167,7 +187,7 @@
 }
 .vs-input {
     position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
+    top: 0; left: 0;
     width: 100%; height: 100%;
     font: 12px/1.45 Consolas, "DejaVu Sans Mono", Menlo, monospace;
     padding: 8px;
@@ -182,7 +202,6 @@
     -webkit-user-select: text;
     user-select: text;
 }
-.vs-input::selection { background: rgba(51, 153, 255, 0.35); color: transparent; }
 
 .tok-kw { color: #0000ff; }
 .tok-str { color: #a31515; }
@@ -212,7 +231,7 @@
     cursor: pointer;
 }
 .vs-btab-on { background: #f4f4f6; font-weight: bold; box-shadow: inset 0 2px 0 #007acc; }
-.vs-pane { flex: 1; overflow: auto; display: none; }
+.vs-pane { -webkit-box-flex: 1; flex: 1; overflow: auto; display: none; }
 
 .vs-output {
     font: 11px/1.5 Consolas, "DejaVu Sans Mono", Menlo, monospace;
@@ -222,7 +241,6 @@
 }
 .vs-out-line { white-space: pre-wrap; }
 
-.vs-errtable { font-size: 12px; }
 .vs-err-row {
     display: flex;
     padding: 4px 8px;
@@ -232,7 +250,7 @@
 .vs-err-row:hover { background: #ddebfb; }
 .vs-err-head { font-weight: bold; background: #ececf0; }
 .vs-err-c { width: 22px; color: #c00; }
-.vs-err-desc { flex: 1; -webkit-user-select: text; user-select: text; }
+.vs-err-desc { -webkit-box-flex: 1; flex: 1; -webkit-user-select: text; user-select: text; }
 .vs-err-file { width: 130px; color: #555; }
 .vs-err-line { width: 50px; color: #555; text-align: right; }
 
@@ -247,16 +265,10 @@
     padding: 14px 10px 8px;
     display: flex;
     flex-direction: column;
-    flex-shrink: 0;
 }
-.emu-title {
-    color: #eee;
-    font-size: 11px;
-    text-align: center;
-    padding-bottom: 6px;
-}
+.emu-title { color: #eee; font-size: 11px; text-align: center; padding-bottom: 6px; }
 .emu-screen {
-    flex: 1;
+    -webkit-box-flex: 1; flex: 1;
     background: #f4f0e8;
     border-radius: 6px;
     overflow-y: auto;
@@ -264,16 +276,12 @@
     -webkit-user-select: text;
     user-select: text;
 }
-.emu-gesture {
-    height: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
+.emu-gesture { height: 16px; }
 .emu-gesture-dot {
     width: 30px; height: 4px;
     border-radius: 2px;
     background: rgba(255,255,255,0.5);
+    margin: 6px auto 0;
 }
 .emu-label {
     background: #fff;
@@ -290,16 +298,17 @@
     padding: 6px 0;
     border: 1px solid #a89f88;
     border-radius: 8px;
+    background: -webkit-gradient(linear, left top, left bottom, from(#fdfdf8), to(#e9e4d4));
     background: linear-gradient(#fdfdf8, #e9e4d4);
     font-size: 12px;
     cursor: pointer;
 }
 .emu-btn:active { background: #d8d2bf; }
 .emu-divider { height: 1px; background: #d8d2bf; margin: 6px 0; }
-.emu-side { flex: 1; display: flex; flex-direction: column; padding: 8px 10px; min-width: 0; }
+.emu-side { -webkit-box-flex: 1; flex: 1; display: flex; flex-direction: column; padding: 8px 10px; min-width: 0; }
 .emu-side-title { font-weight: bold; font-size: 11px; color: #555; padding-bottom: 4px; }
 .emu-log {
-    flex: 1;
+    -webkit-box-flex: 1; flex: 1;
     background: #fff;
     border: 1px solid #d0d0d4;
     font: 11px/1.5 Consolas, monospace;
@@ -316,25 +325,23 @@
 
 .vs-statusbar {
     display: flex;
-    align-items: center;
     background: #007acc;
     color: #fff;
     font-size: 11px;
     padding: 3px 10px;
-    gap: 12px;
 }
-.vs-st-flex { flex: 1; }
+.vs-st-msg { padding-right: 12px; }
+.vs-st-flex { -webkit-box-flex: 1; flex: 1; }
+.vs-st-file { padding-right: 12px; }
 
-/* ---- modal ----------------------------------------------------------------- */
+/* ---- modal dialog (browser shim path; on-device uses palm dialog) ----------- */
 
 .vs-modal-overlay {
     position: absolute;
     top: 0; right: 0; bottom: 0; left: 0;
     background: rgba(0,0,0,0.3);
-    display: flex;
-    align-items: center;
-    justify-content: center;
     z-index: 70;
+    display: flex;
 }
 .vs-modal {
     width: 320px;
@@ -343,25 +350,33 @@
     border-radius: 6px;
     box-shadow: 0 8px 30px rgba(0,0,0,0.4);
     padding: 14px;
+    margin: auto;
 }
 .vs-modal-title { font-weight: bold; font-size: 13px; margin-bottom: 10px; }
 .vs-modal-body { white-space: pre-line; font-size: 12px; color: #333; margin-bottom: 8px; }
-.vs-modal-input {
+
+/* Palm-style dialog pieces used by the shim (real webOS supplies palm-*) */
+.palm-dialog-title { font-weight: bold; font-size: 14px; margin-bottom: 10px; }
+.palm-group { margin-bottom: 12px; }
+.palm-group-title { font-size: 11px; color: #666; margin-bottom: 4px; }
+.vs-dialog-input {
     width: 100%;
     padding: 5px 8px;
     font-size: 13px;
     border: 1px solid #a0a0a4;
     border-radius: 3px;
-    margin-bottom: 12px;
     outline: none;
 }
-.vs-modal-input:focus { border-color: #007acc; }
-.vs-modal-btns { display: flex; justify-content: flex-end; gap: 8px; }
-.vs-modal-btn {
+.vs-dialog-input:focus { border-color: #007acc; }
+.palm-dialog-buttons { text-align: right; }
+.palm-button {
     padding: 5px 16px;
+    margin-left: 8px;
     border: 1px solid #a0a0a4;
     border-radius: 3px;
+    background: -webkit-gradient(linear, left top, left bottom, from(#fff), to(#e8e8ea));
     background: linear-gradient(#fff, #e8e8ea);
     cursor: pointer;
 }
-.vs-modal-btn:hover { border-color: #007acc; }
+.palm-button.affirmative { border-color: #5c8a3c; }
+.palm-button:hover { border-color: #007acc; }

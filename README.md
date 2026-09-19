@@ -1,89 +1,91 @@
 # Visual Studio for HP webOS
 
-A Visual Studio–style IDE that lives inside a simulated HP webOS environment —
-cards, launcher, gesture area, and all. Built as a love letter to the mobile OS
-that did multitasking right.
+A Visual Studio–style IDE written as a **real Mojo application** for legacy
+HP/Palm webOS (Pre, Pixi, TouchPad). It follows the authentic Palm SDK app
+structure — `appinfo.json`, `sources.json`, stage/scene assistants, Mojo
+views — and packages into a `.ipk` with `palm-package`.
 
-Everything is vanilla HTML/CSS/JS in ES5, so the same files run both in a modern
-browser and (in spirit, and mostly in practice) inside the WebKit engine that
-shipped on the Pre, Pixi, and TouchPad. The repo also carries real webOS
-packaging metadata — `appinfo.json`, `framework_config.json`, `sources.json`,
-`depends.js` — so the app can be wrapped into an `.ipk` with the Palm/HP SDK.
+Everything is written in ES3/ES5-safe JavaScript (no `let`/`const`, no
+`Array#indexOf`/`forEach`, no `Object.keys`, `keyCode`-based key handling)
+so it runs on the JavaScriptCore shipped with webOS 1.x–3.x.
 
-## What's inside
+## App layout (Mojo conventions)
 
-- **webOS shell** (`js/webos.js`) — status bar with live clock, dock-style
-  launcher, Just Type filtering, and the card metaphor: tap the gesture strip
-  (or press `Esc`) to zoom out to card view, flick a card up to close it.
-- **Visual Studio** (`js/ide.js`) — the IDE itself, styled after the
-  Visual Studio 2010 era:
-  - Menu bar (File / Edit / View / Project / Build / Debug / Help)
-  - Toolbar with New, Save, Build, and ▶ Run
-  - Solution Explorer with two sample projects (click a project to make it the
-    startup project)
-  - Tabbed editor with live syntax highlighting and line numbers
-  - Output window with authentic `------ Build started ------` output
-  - Error List with clickable diagnostics
-  - A little emulated Pre — Run launches your app's `main(device)` inside a
-    device frame with a captured `console`
-- **Sample projects** (`js/projects.js`) — `HelloWebOS` and `CardDemo`.
-- **Packaging metadata** — `appinfo.json`, `sources.json`, `depends.js`,
-  `framework_config.json`, `icon.png`.
+```
+appinfo.json              Mojo application descriptor
+icon.png                  64x64 launcher icon
+index.html                Mojo bootstrap (loads /usr/palm/frameworks/mojo/mojo.js)
+sources.json              packaged source manifest (load order + scene mapping)
+framework_config.json     Mojo framework flags
+package.sh                palm-package/palm-install/palm-launch wrapper
+app/
+  assistants/
+    stage-assistant.js    app entry point — pushes the main scene
+    main-assistant.js     scene owner: app menu, dialogs, IDE host wiring
+    newfile-dialog-assistant.js
+  views/
+    main/main-scene.html      scene template hosting #vs-root
+    dialogs/newfile-dialog.html
+js/
+  ide.js                  the IDE engine (VS2010-style chrome, editor, build,
+                          error list, device emulator)
+  projects.js             bundled sample solution
+lib/
+  mojo-shim.js            development shim — minimal Mojo implementation for
+                          desktop browsers; no-ops when real mojo.js is present
+stylesheets/
+  visualstudio.css
+```
 
-## Run it in a browser
+## Mojo APIs used
+
+- `StageAssistant` / `pushScene("main")` — standard Mojo bootstrap
+- `Mojo.Menu.appMenu` — app menu with About item (`handleCommand` /
+  `Mojo.Event.command`)
+- `Mojo.Model.Cookie` — solution persistence (the Palm cookie store)
+- `this.controller.showAlertDialog` / `showDialog` — About and Add New File
+- `Mojo.Event.listen` / `Mojo.Event.tap` — widget event wiring
+
+## Build a package
+
+Requires the legacy webOS SDK on your `PATH` (HP webOS SDK 3.0.x, or a
+community fork such as webosbrew/webOS-Ports):
+
+```sh
+./package.sh            # builds dist/com.communitypoke.visualstudio_1.0.0_all.ipk
+./package.sh install    # + palm-install onto a device or the Palm emulator
+./package.sh launch     # + palm-launch
+```
+
+If the SDK isn't installed, the script explains what's needed and exits
+without failing builds.
+
+## Develop in a desktop browser
+
+`lib/mojo-shim.js` provides a minimal Mojo surface (cookie store, scene
+loading, dialogs, event helpers) so the app boots without a device:
 
 ```sh
 python3 -m http.server 8000
 # open http://localhost:8000
 ```
 
-or just open `index.html` directly — there are no build steps.
+On a real device, `/usr/palm/frameworks/mojo/mojo.js` loads and the shim
+detects `window.Mojo` and does nothing.
 
-## Package it for a real device
+## The IDE
 
-With the legacy webOS SDK (`palm-package` / `palm-install`) installed:
-
-```sh
-palm-package .
-palm-install com.communitypoke.visualstudio_1.0.0_all.ipk
-palm-launch com.communitypoke.visualstudio
-```
-
-Caveat: real webOS WebKit is ancient — the ES5 code mostly holds up, but modern
-CSS flex/gradient features will degrade on-device. It *should* limp along on a
-TouchPad running 3.0.x. Pull requests that improve on-device compatibility are
-welcome.
-
-## Controls
-
-| Action | How |
-| --- | --- |
-| Card view | Tap the gesture strip at the bottom, or press `Esc` |
-| Close a card | In card view, drag the card upward and release |
-| Filter cards | Type in the "Just type..." bar while in card view |
-| Build | `F6` or the Build menu |
-| Run on emulator | `Ctrl+F5` or ▶ Run |
-| Save file | `Ctrl+S` |
-
-## Writing apps for the emulator
-
-A project runs all of its `.js` files, then calls `main(device)`:
-
-```js
-function main(device) {
-    device.setTitle("My App");
-    device.clear();
-    device.addLabel("Hello, webOS!");
-    device.addButton("Tap me", function () {
-        console.log("tap!");
-    });
-}
-```
-
-`device` provides `setTitle`, `clear`, `addLabel` (returns `{ setText }`),
-`addButton(label, cb)`, and `addDivider`. A stub `enyo.kind()` is also present
-for flavor.
+- Menu bar (File / Edit / View / Project / Build / Debug / Help) and toolbar
+- Solution Explorer — two sample projects (`HelloWebOS`, `CardDemo`);
+  click a project node to make it the startup project
+- Tabbed editor with syntax highlighting, line numbers, dirty markers
+- `F6` Build — parse-checks project JS and emits VS-style output plus an
+  Error List with clickable diagnostics
+- `Ctrl+F5` Run — executes project code in a sandbox inside an emulated Pre
+  frame; entry point is `main(device)` with `device.setTitle`, `addLabel`,
+  `addButton`, `addDivider`, and a captured `console`
+- Edits persist via `Mojo.Model.Cookie`
 
 ---
 
-CommunityPokeOrg — for Wolfy, who asked for Visual Studio on a phone from 2011.
+CommunityPokeOrg — for Wolfy, who wanted Visual Studio on webOS for real.
