@@ -1,0 +1,9 @@
+{
+    "id": "com.communitypoke.pdkhybrid",
+    "version": "1.0.0",
+    "vendor": "CommunityPoke",
+    "type": "web",
+    "main": "index.html",
+    "title": "PDK Hybrid",
+    "icon": "icon.png"
+}

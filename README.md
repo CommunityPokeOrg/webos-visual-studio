@@ -35,6 +35,11 @@ lib/
                           desktop browsers; no-ops when real mojo.js is present
 stylesheets/
   visualstudio.css
+tools/
+  pdk-build.sh            native build helper (arm-none-linux-gnueabi-gcc)
+templates/
+  pdk-standalone/         standalone PDK app template (SDL/PDL)
+  pdk-hybrid/             hybrid Mojo + PDK plugin template
 ```
 
 ## Mojo APIs used
@@ -76,15 +81,42 @@ detects `window.Mojo` and does nothing.
 ## The IDE
 
 - Menu bar (File / Edit / View / Project / Build / Debug / Help) and toolbar
-- Solution Explorer — two sample projects (`HelloWebOS`, `CardDemo`);
-  click a project node to make it the startup project
-- Tabbed editor with syntax highlighting, line numbers, dirty markers
-- `F6` Build — parse-checks project JS and emits VS-style output plus an
-  Error List with clickable diagnostics
-- `Ctrl+F5` Run — executes project code in a sandbox inside an emulated Pre
-  frame; entry point is `main(device)` with `device.setTitle`, `addLabel`,
-  `addButton`, `addDivider`, and a captured `console`
+- Solution Explorer — sample projects of all three kinds; click a project
+  node to make it the startup project. `[PDK]`/`[HYBRID]` tags mark native
+  and hybrid projects.
+- Tabbed editor with syntax highlighting (JS, C, Makefile, JSON, HTML),
+  line numbers, dirty markers
+- `F6` Build — for Mojo projects, parse-checks JS and emits VS-style
+  output plus a clickable Error List. For PDK/hybrid projects the build is
+  **simulated**: it echoes the real `arm-none-linux-gnueabi-gcc` command
+  lines and runs lightweight source checks (a cross-compile can't happen
+  inside a webOS app).
+- `Ctrl+F5` Run — Mojo projects execute in a sandbox inside an emulated
+  Pre frame (`main(device)` with `device.setTitle`, `addLabel`,
+  `addButton`, `addDivider`, captured `console`). Native projects instead
+  show the real deploy command — running ARM code needs a device or the
+  Palm emulator.
 - Edits persist via `Mojo.Model.Cookie`
+
+## Palm PDK (native C/C++)
+
+The repo ships real PDK project support — see `templates/README.md`:
+
+- `templates/pdk-standalone` — standalone native app skeleton
+  (`type: "pdk"`, `PDL_Init` + SDL 1.2 event loop, Makefile driven by
+  `arm-none-linux-gnueabi-gcc`; OpenGL ES 1.1/2.0 libs wired in)
+- `templates/pdk-hybrid` — hybrid Mojo + PDK app: a Mojo scene embedding a
+  native plugin via `<object type="application/x-palm-plugin">`, with the
+  plugin source compiled into `native/plugin` inside the same .ipk
+- `tools/pdk-build.sh <dir>` — invokes the cross toolchain; requires the
+  PDK (`$PalmPDK/arm-gcc/bin` on `PATH`). `--host-check <dir>` runs a
+  host-gcc syntax check instead and clearly labels itself as producing no
+  device binary.
+- `package.sh <dir>` auto-detects a Makefile, builds native code first
+  when the toolchain is present (warns and continues for packaging-only
+  when it isn't), then runs `palm-package`.
+- The IDE's `NativeCube` and `HybridCounter` sample projects show the same
+  structure so the workflow is explorable on-device.
 
 ---
 

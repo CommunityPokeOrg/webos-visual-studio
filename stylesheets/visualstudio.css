@@ -124,6 +124,8 @@ html, body {
 .tree-html:before { content: "<> "; color: #7a3ea0; font-size: 10px; }
 .tree-text:before { content: "≡ "; color: #666; font-size: 10px; }
 .tree-javascript:before { content: "JS "; color: #c09000; font-size: 10px; font-weight: bold; }
+.tree-c:before { content: "C  "; color: #0056a0; font-size: 10px; font-weight: bold; }
+.tree-makefile:before { content: "mk "; color: #6a4a20; font-size: 10px; font-weight: bold; }
 
 .vs-center { -webkit-box-flex: 1; flex: 1; display: flex; flex-direction: column; min-width: 0; }
 
@@ -207,6 +209,7 @@ html, body {
 .tok-str { color: #a31515; }
 .tok-com { color: #008000; }
 .tok-num { color: #098658; }
+.tok-pre { color: #9b4f96; }
 
 /* ---- bottom panes ----------------------------------------------------------- */
 
