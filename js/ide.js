@@ -1,10 +1,15 @@
-/* Visual Studio for webOS — the IDE itself.
- * VS2010-era chrome rendered inside a webOS card. ES5 throughout so the
- * code can run on a period-correct WebKit (webOS 3.x) engine. */
+/* Visual Studio for webOS — the IDE engine.
+ * VS2010-era chrome rendered inside a single Mojo scene. Written in ES3/ES5
+ * only (var, function expressions, no forEach/indexOf/Object.keys/JSON) so it
+ * runs on the JavaScriptCore shipped with webOS 1.x–3.x.
+ *
+ * Host interface passed to create():
+ *   host.store          { load() -> obj|null, save(obj) }  (Mojo.Model.Cookie on device)
+ *   host.showAbout()    opens the About dialog
+ *   host.newFileDialog(fn)  opens the Add New File dialog; fn(name) on accept
+ */
 
 var VisualStudio = (function () {
-
-    var STORE_KEY = "webos-vs-solution-v1";
 
     var JS_KEYWORDS = ("break case catch class const continue debugger default " +
         "delete do else enum export extends false finally for function if " +
@@ -18,6 +23,15 @@ var VisualStudio = (function () {
         if (text !== undefined) { n.appendChild(document.createTextNode(text)); }
         return n;
     }
+
+    function arrIndexOf(arr, item) {
+        for (var i = 0; i < arr.length; i++) {
+            if (arr[i] === item) { return i; }
+        }
+        return -1;
+    }
+
+    function isKeyword(w) { return arrIndexOf(JS_KEYWORDS, w) >= 0; }
 
     function escapeHtml(s) {
         return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -54,11 +68,7 @@ var VisualStudio = (function () {
             var m = /^[A-Za-z_$][A-Za-z0-9_$]*/.exec(line.slice(i));
             if (m) {
                 var w = m[0];
-                if (JS_KEYWORDS.indexOf(w) >= 0) {
-                    out += '<span class="tok-kw">' + w + "</span>";
-                } else {
-                    out += escapeHtml(w);
-                }
+                out += isKeyword(w) ? '<span class="tok-kw">' + w + "</span>" : escapeHtml(w);
                 i += w.length;
                 continue;
             }
@@ -85,10 +95,8 @@ var VisualStudio = (function () {
 
     /* ---- solution model ----------------------------------------------- */
 
-    function loadSolution() {
-        var saved = null;
-        try { saved = JSON.parse(localStorage.getItem(STORE_KEY) || "null"); }
-        catch (e) { saved = null; }
+    function loadSolution(store) {
+        var saved = store.load();
 
         var projects = [];
         for (var i = 0; i < VS_SAMPLES.length; i++) {
@@ -117,24 +125,29 @@ var VisualStudio = (function () {
                         if (proj.files[r].name === sf.name) { found = proj.files[r]; break; }
                     }
                     if (found) { found.content = sf.content; }
-                    else { proj.files.push({ name: sf.name, language: sf.language || "javascript", content: sf.content }); }
+                    else {
+                        proj.files.push({ name: sf.name,
+                            language: sf.language || "javascript",
+                            content: sf.content });
+                    }
                 }
             }
         }
         return { name: "WebOSSolution", projects: projects, startupIndex: 0 };
     }
 
-    function saveSolution(solution) {
+    function saveSolution(store, solution) {
         var data = { projects: [] };
         for (var i = 0; i < solution.projects.length; i++) {
             var p = solution.projects[i];
             var files = [];
             for (var j = 0; j < p.files.length; j++) {
-                files.push({ name: p.files[j].name, language: p.files[j].language, content: p.files[j].content });
+                files.push({ name: p.files[j].name, language: p.files[j].language,
+                    content: p.files[j].content });
             }
             data.projects.push({ name: p.name, files: files });
         }
-        try { localStorage.setItem(STORE_KEY, JSON.stringify(data)); } catch (e) { }
+        store.save(data);
     }
 
     /* ---- build diagnostics -------------------------------------------- */
@@ -182,8 +195,13 @@ var VisualStudio = (function () {
     function makeDevice(screenEl, onLog) {
         var api = {
             setTitle: function (t) {
-                var tb = screenEl.parentNode.querySelector(".emu-title");
-                if (tb) { tb.textContent = t; }
+                var kids = screenEl.parentNode.childNodes;
+                for (var i = 0; i < kids.length; i++) {
+                    if (kids[i].className === "emu-title") {
+                        kids[i].textContent = t;
+                        return;
+                    }
+                }
             },
             clear: function () { screenEl.innerHTML = ""; },
             addLabel: function (text) {
@@ -204,8 +222,8 @@ var VisualStudio = (function () {
 
     /* ---- IDE ----------------------------------------------------------- */
 
-    function create(container, wm) {
-        var solution = loadSolution();
+    function create(container, host) {
+        var solution = loadSolution(host.store);
         var openTabs = [];        // [{project, file}]
         var activeTab = null;
 
@@ -215,11 +233,11 @@ var VisualStudio = (function () {
         var menubar = el("div", "vs-menubar");
         var menus = {
             "File": [
-                { label: "New File...", fn: function () { promptNewFile(); } },
+                { label: "New File...\tCtrl+N", fn: function () { promptNewFile(); } },
                 { label: "Save\tCtrl+S", fn: function () { saveActive(); } },
                 { label: "Save All", fn: function () { saveAll(); } },
                 null,
-                { label: "Close Card", fn: function () { if (wm) { wm.closeActive(); } } }
+                { label: "Close Editor", fn: function () { if (activeTab) { closeTab(activeTab); } } }
             ],
             "Edit": [
                 { label: "Undo\tCtrl+Z", fn: function () { document.execCommand("undo"); } },
@@ -247,42 +265,49 @@ var VisualStudio = (function () {
                 { label: "Break All", fn: function () { out("The emulator ignored your breakpoint. It is a phone."); } }
             ],
             "Help": [
-                { label: "About Visual Studio for webOS", fn: function () { showAbout(); } }
+                { label: "About Visual Studio for webOS", fn: function () { host.showAbout(); } }
             ]
         };
         var openMenuEl = null;
-        function closeMenu() { if (openMenuEl) { openMenuEl.parentNode.removeChild(openMenuEl); openMenuEl = null; } }
+        function closeMenu() {
+            if (openMenuEl && openMenuEl.parentNode) {
+                openMenuEl.parentNode.removeChild(openMenuEl);
+            }
+            openMenuEl = null;
+        }
         document.addEventListener("mousedown", function (e) {
             if (openMenuEl && !openMenuEl.contains(e.target)) { closeMenu(); }
-        });
+        }, false);
         for (var mName in menus) {
-            (function (name) {
-                var item = el("span", "vs-menu-item", name);
-                item.onmousedown = function (e) {
-                    e.preventDefault();
-                    if (openMenuEl) { closeMenu(); return; }
-                    var dd = el("div", "vs-menu-dd");
-                    var items = menus[name];
-                    for (var i = 0; i < items.length; i++) {
-                        var it = items[i];
-                        if (it === null) { dd.appendChild(el("div", "vs-menu-sep")); continue; }
-                        (function (entry) {
-                            var parts = entry.label.split("\t");
-                            var row = el("div", "vs-menu-row");
-                            row.appendChild(el("span", "vs-menu-label", parts[0]));
-                            if (parts[1]) { row.appendChild(el("span", "vs-menu-key", parts[1])); }
-                            row.onmousedown = function (ev) {
-                                ev.preventDefault(); ev.stopPropagation();
-                                closeMenu(); entry.fn();
-                            };
-                            dd.appendChild(row);
-                        })(it);
-                    }
-                    item.appendChild(dd);
-                    openMenuEl = dd;
-                };
-                menubar.appendChild(item);
-            })(mName);
+            if (menus.hasOwnProperty(mName)) {
+                (function (name) {
+                    var item = el("span", "vs-menu-item", name);
+                    item.onmousedown = function (e) {
+                        e.preventDefault();
+                        if (openMenuEl) { closeMenu(); return; }
+                        var dd = el("div", "vs-menu-dd");
+                        var items = menus[name];
+                        for (var i = 0; i < items.length; i++) {
+                            var it = items[i];
+                            if (it === null) { dd.appendChild(el("div", "vs-menu-sep")); continue; }
+                            (function (entry) {
+                                var parts = entry.label.split("\t");
+                                var row = el("div", "vs-menu-row");
+                                row.appendChild(el("span", "vs-menu-label", parts[0]));
+                                if (parts[1]) { row.appendChild(el("span", "vs-menu-key", parts[1])); }
+                                row.onmousedown = function (ev) {
+                                    ev.preventDefault(); ev.stopPropagation();
+                                    closeMenu(); entry.fn();
+                                };
+                                dd.appendChild(row);
+                            })(it);
+                        }
+                        item.appendChild(dd);
+                        openMenuEl = dd;
+                    };
+                    menubar.appendChild(item);
+                })(mName);
+            }
         }
         root.appendChild(menubar);
 
@@ -381,23 +406,27 @@ var VisualStudio = (function () {
         var bottomTabs = el("div", "vs-bottom-tabs");
         var panes = {};
         var paneNames = { output: "Output", errors: "Error List", emulator: "Device Emulator" };
-        for (var pn in paneNames) {
+        var paneOrder = ["output", "errors", "emulator"];
+        for (var pi = 0; pi < paneOrder.length; pi++) {
             (function (key) {
                 var t = el("button", "vs-btab", paneNames[key]);
                 t.onclick = function () { showBottomTab(key); };
                 bottomTabs.appendChild(t);
                 panes[key] = el("div", "vs-pane vs-pane-" + key);
                 bottom.appendChild(panes[key]);
-            })(pn);
+            })(paneOrder[pi]);
         }
         root.appendChild(bottom);
 
         function showBottomTab(key) {
-            for (var k in panes) { panes[k].style.display = k === key ? "" : "none"; }
+            for (var k in panes) {
+                if (panes.hasOwnProperty(k)) {
+                    panes[k].style.display = k === key ? "block" : "none";
+                }
+            }
             var tabs = bottomTabs.childNodes;
-            var names = Object.keys(paneNames);
-            for (var i = 0; i < tabs.length; i++) {
-                tabs[i].className = "vs-btab" + (names[i] === key ? " vs-btab-on" : "");
+            for (var i = 0; i < tabs.length && i < paneOrder.length; i++) {
+                tabs[i].className = "vs-btab" + (paneOrder[i] === key ? " vs-btab-on" : "");
             }
             bottom.style.display = "";
         }
@@ -524,12 +553,12 @@ var VisualStudio = (function () {
             }
             refreshEditor();
             updatePos();
-        });
-        input.addEventListener("scroll", syncScroll);
-        input.addEventListener("keyup", updatePos);
-        input.addEventListener("click", updatePos);
+        }, false);
+        input.addEventListener("scroll", syncScroll, false);
+        input.addEventListener("keyup", updatePos, false);
+        input.addEventListener("click", updatePos, false);
         input.addEventListener("keydown", function (e) {
-            if (e.key === "Tab") {
+            if (e.keyCode === 9) {  // Tab
                 e.preventDefault();
                 var s = input.selectionStart, en = input.selectionEnd;
                 input.value = input.value.slice(0, s) + "    " + input.value.slice(en);
@@ -537,7 +566,7 @@ var VisualStudio = (function () {
                 if (activeTab) { activeTab.file.content = input.value; activeTab.dirty = true; }
                 refreshEditor();
             }
-        });
+        }, false);
 
         /* ---- tabs ------------------------------------------------------ */
 
@@ -570,7 +599,7 @@ var VisualStudio = (function () {
         }
 
         function closeTab(tab) {
-            var idx = openTabs.indexOf(tab);
+            var idx = arrIndexOf(openTabs, tab);
             if (idx >= 0) { openTabs.splice(idx, 1); }
             if (tab === activeTab) {
                 activeTab = openTabs.length ? openTabs[Math.max(0, idx - 1)] : null;
@@ -604,7 +633,7 @@ var VisualStudio = (function () {
             if (!activeTab) { return; }
             activeTab.file.content = input.value;
             activeTab.dirty = false;
-            saveSolution(solution);
+            saveSolution(host.store, solution);
             renderTabs();
             stMsg.textContent = activeTab.file.name + " saved";
             setTimeout(function () { stMsg.textContent = "Ready"; }, 1500);
@@ -613,7 +642,7 @@ var VisualStudio = (function () {
         function saveAll() {
             if (activeTab) { activeTab.file.content = input.value; activeTab.dirty = false; }
             for (var i = 0; i < openTabs.length; i++) { openTabs[i].dirty = false; }
-            saveSolution(solution);
+            saveSolution(host.store, solution);
             renderTabs();
             stMsg.textContent = "All files saved";
             setTimeout(function () { stMsg.textContent = "Ready"; }, 1500);
@@ -622,27 +651,7 @@ var VisualStudio = (function () {
         /* ---- new file dialog ------------------------------------------- */
 
         function promptNewFile() {
-            var overlay = el("div", "vs-modal-overlay");
-            var dlg = el("div", "vs-modal");
-            dlg.appendChild(el("div", "vs-modal-title", "Add New File"));
-            var field = el("input", "vs-modal-input");
-            field.value = "newfile.js";
-            dlg.appendChild(field);
-            var btnRow = el("div", "vs-modal-btns");
-            var ok = el("button", "vs-modal-btn", "Add");
-            var cancel = el("button", "vs-modal-btn", "Cancel");
-            btnRow.appendChild(ok);
-            btnRow.appendChild(cancel);
-            dlg.appendChild(btnRow);
-            overlay.appendChild(dlg);
-            root.appendChild(overlay);
-            field.focus();
-            field.select();
-            function done(accept) {
-                overlay.parentNode.removeChild(overlay);
-                if (!accept) { return; }
-                var name = field.value.replace(/^\s+|\s+$/g, "");
-                if (!name) { return; }
+            host.newFileDialog(function (name) {
                 var lang = /\.json$/i.test(name) ? "json" :
                     /\.html?$/i.test(name) ? "html" :
                     /\.txt$/i.test(name) ? "text" : "javascript";
@@ -650,29 +659,7 @@ var VisualStudio = (function () {
                 proj.files.push({ name: name, language: lang, content: "" });
                 renderTree();
                 openFile(proj, proj.files[proj.files.length - 1]);
-            }
-            ok.onclick = function () { done(true); };
-            cancel.onclick = function () { done(false); };
-            field.onkeydown = function (e) {
-                if (e.key === "Enter") { done(true); }
-                if (e.key === "Escape") { done(false); }
-            };
-        }
-
-        function showAbout() {
-            var overlay = el("div", "vs-modal-overlay");
-            var dlg = el("div", "vs-modal");
-            dlg.appendChild(el("div", "vs-modal-title", "Visual Studio for webOS"));
-            dlg.appendChild(el("div", "vs-modal-body",
-                "Version 10.0.webOS\nA community-built developer environment for the " +
-                "card interface we never stopped loving.\n\nCommunityPokeOrg"));
-            var btnRow = el("div", "vs-modal-btns");
-            var ok = el("button", "vs-modal-btn", "OK");
-            btnRow.appendChild(ok);
-            dlg.appendChild(btnRow);
-            overlay.appendChild(dlg);
-            root.appendChild(overlay);
-            ok.onclick = function () { overlay.parentNode.removeChild(overlay); };
+            });
         }
 
         function cycleStartup() {
@@ -685,7 +672,7 @@ var VisualStudio = (function () {
         /* ---- build & run ----------------------------------------------- */
 
         function build(rebuild) {
-            saveSolution(solution);
+            saveSolution(host.store, solution);
             var proj = solution.projects[solution.startupIndex];
             showBottomTab("output");
             out((rebuild ? "------ Rebuild All" : "------ Build") +
@@ -757,14 +744,14 @@ var VisualStudio = (function () {
             }
         }
 
-        /* ---- keyboard --------------------------------------------------- */
+        /* ---- keyboard (keyCode for legacy WebKit) ----------------------- */
 
         root.addEventListener("keydown", function (e) {
-            if (e.ctrlKey && e.key === "s") { e.preventDefault(); saveActive(); }
-            if (e.ctrlKey && e.key === "n") { e.preventDefault(); promptNewFile(); }
-            if (e.key === "F6") { e.preventDefault(); build(false); }
-            if (e.ctrlKey && e.key === "F5") { e.preventDefault(); run(); }
-        });
+            if (e.ctrlKey && e.keyCode === 83) { e.preventDefault(); saveActive(); }       // Ctrl+S
+            if (e.ctrlKey && e.keyCode === 78) { e.preventDefault(); promptNewFile(); }    // Ctrl+N
+            if (e.keyCode === 117) { e.preventDefault(); build(false); }                   // F6
+            if (e.ctrlKey && e.keyCode === 116) { e.preventDefault(); run(); }             // Ctrl+F5
+        }, false);
 
         /* ---- boot -------------------------------------------------------- */
 
