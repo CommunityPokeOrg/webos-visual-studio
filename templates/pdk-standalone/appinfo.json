@@ -1,0 +1,9 @@
+{
+    "id": "com.communitypoke.pdkstandalone",
+    "version": "1.0.0",
+    "vendor": "CommunityPoke",
+    "type": "pdk",
+    "main": "pdkapp",
+    "title": "PDK Standalone",
+    "icon": "icon.png"
+}

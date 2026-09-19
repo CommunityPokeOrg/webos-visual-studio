@@ -17,6 +17,11 @@ var VisualStudio = (function () {
         "private protected public return static super switch this throw " +
         "true try typeof var void while with yield").split(" ");
 
+    var C_KEYWORDS = ("auto break case char const continue default do double " +
+        "else enum extern float for goto if int long register return short " +
+        "signed sizeof static struct switch typedef union unsigned void " +
+        "volatile while").split(" ");
+
     function el(tag, cls, text) {
         var n = document.createElement(tag);
         if (cls) { n.className = cls; }
@@ -31,7 +36,9 @@ var VisualStudio = (function () {
         return -1;
     }
 
-    function isKeyword(w) { return arrIndexOf(JS_KEYWORDS, w) >= 0; }
+    function isKeyword(lang, w) {
+        return arrIndexOf(lang === "c" ? C_KEYWORDS : JS_KEYWORDS, w) >= 0;
+    }
 
     function escapeHtml(s) {
         return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -39,7 +46,18 @@ var VisualStudio = (function () {
 
     /* ---- syntax highlighting ------------------------------------------ */
 
-    function highlightLine(line) {
+    function highlightLine(line, lang) {
+        if (lang === "c" && /^\s*#/.test(line)) {
+            return '<span class="tok-pre">' + escapeHtml(line) + "</span>";
+        }
+        if (lang === "makefile") {
+            var hash = line.indexOf("#");
+            if (hash >= 0) {
+                return escapeHtml(line.slice(0, hash)) +
+                    '<span class="tok-com">' + escapeHtml(line.slice(hash)) + "</span>";
+            }
+            return escapeHtml(line);
+        }
         var out = "", i = 0, ch;
         while (i < line.length) {
             ch = line[i];
@@ -68,7 +86,7 @@ var VisualStudio = (function () {
             var m = /^[A-Za-z_$][A-Za-z0-9_$]*/.exec(line.slice(i));
             if (m) {
                 var w = m[0];
-                out += isKeyword(w) ? '<span class="tok-kw">' + w + "</span>" : escapeHtml(w);
+                out += isKeyword(lang, w) ? '<span class="tok-kw">' + w + "</span>" : escapeHtml(w);
                 i += w.length;
                 continue;
             }
@@ -84,11 +102,11 @@ var VisualStudio = (function () {
         return out;
     }
 
-    function highlight(code) {
+    function highlight(code, lang) {
         var lines = code.split("\n");
         var out = [];
         for (var i = 0; i < lines.length; i++) {
-            out.push(highlightLine(lines[i]));
+            out.push(highlightLine(lines[i], lang));
         }
         return out.join("\n");
     }
@@ -106,7 +124,8 @@ var VisualStudio = (function () {
                 var f = src.files[j];
                 files.push({ name: f.name, language: f.language, content: f.content });
             }
-            projects.push({ name: src.name, description: src.description, files: files });
+            projects.push({ name: src.name, kind: src.kind || "mojo",
+                description: src.description, files: files });
         }
         if (saved && saved.projects) {
             for (var k = 0; k < saved.projects.length; k++) {
@@ -116,7 +135,8 @@ var VisualStudio = (function () {
                     if (projects[p].name === sp.name) { proj = projects[p]; break; }
                 }
                 if (!proj) {
-                    proj = { name: sp.name, description: "", files: [] };
+                    proj = { name: sp.name, kind: sp.kind || "mojo",
+                        description: "", files: [] };
                     projects.push(proj);
                 }
                 for (var q = 0; q < sp.files.length; q++) {
@@ -145,7 +165,7 @@ var VisualStudio = (function () {
                 files.push({ name: p.files[j].name, language: p.files[j].language,
                     content: p.files[j].content });
             }
-            data.projects.push({ name: p.name, files: files });
+            data.projects.push({ name: p.name, kind: p.kind || "mojo", files: files });
         }
         store.save(data);
     }
@@ -177,10 +197,12 @@ var VisualStudio = (function () {
                 }
             }
         }
-        try {
-            new Function(src); // parse-only
-        } catch (e) {
-            problems.push({ line: 0, code: "VS1002", text: "Syntax error: " + e.message });
+        if (file.language === "javascript") {
+            try {
+                new Function(src); // parse-only
+            } catch (e) {
+                problems.push({ line: 0, code: "VS1002", text: "Syntax error: " + e.message });
+            }
         }
         if (firstNeg > 0) {
             problems.push({ line: firstNeg, code: "VS1029", text: "Unexpected '}'" });
@@ -352,8 +374,10 @@ var VisualStudio = (function () {
             tree.appendChild(solNode);
             for (var i = 0; i < solution.projects.length; i++) {
                 (function (proj, idx) {
+                    var label = proj.name +
+                        (proj.kind && proj.kind !== "mojo" ? "  [" + proj.kind.toUpperCase() + "]" : "");
                     var pNode = el("div", "tree-node tree-proj" +
-                        (idx === solution.startupIndex ? " tree-startup" : ""), proj.name);
+                        (idx === solution.startupIndex ? " tree-startup" : ""), label);
                     pNode.title = idx === solution.startupIndex ? "Startup project" : "Click to make startup project";
                     pNode.onmousedown = function () {
                         if (idx !== solution.startupIndex) {
@@ -525,7 +549,7 @@ var VisualStudio = (function () {
                 return;
             }
             var code = input.value; // source of truth while editing
-            hl.innerHTML = highlight(code) + "\n";
+            hl.innerHTML = highlight(code, activeTab.file.language) + "\n";
             var n = code.split("\n").length;
             var nums = [];
             for (var i = 1; i <= n; i++) { nums.push(i); }
@@ -652,7 +676,10 @@ var VisualStudio = (function () {
 
         function promptNewFile() {
             host.newFileDialog(function (name) {
-                var lang = /\.json$/i.test(name) ? "json" :
+                var lower = name.toLowerCase();
+                var lang = /\.(c|h|cc|cpp|cxx|hpp)$/i.test(name) ? "c" :
+                    lower === "makefile" || /\.mk$/i.test(name) ? "makefile" :
+                    /\.json$/i.test(name) ? "json" :
                     /\.html?$/i.test(name) ? "html" :
                     /\.txt$/i.test(name) ? "text" : "javascript";
                 var proj = solution.projects[solution.startupIndex];
@@ -677,6 +704,9 @@ var VisualStudio = (function () {
             showBottomTab("output");
             out((rebuild ? "------ Rebuild All" : "------ Build") +
                 " started: Project: " + proj.name + ", Configuration: Debug webOS ------");
+            if (proj.kind === "pdk" || proj.kind === "hybrid") {
+                return buildNative(proj);
+            }
             var errors = [];
             for (var i = 0; i < proj.files.length; i++) {
                 var f = proj.files[i];
@@ -702,6 +732,43 @@ var VisualStudio = (function () {
             return errors.length === 0;
         }
 
+        /* Native (PDK) build: the IDE cannot run arm-none-linux-gnueabi-gcc
+         * on-device, so this echoes the real command lines and runs the
+         * lightweight source checks. Everything is tagged "simulated" —
+         * the real build happens on a host via tools/pdk-build.sh or
+         * package.sh. */
+        function buildNative(proj) {
+            var errors = [];
+            out("  SIMULATED — no cross toolchain in-app; run tools/pdk-build.sh on a host");
+            for (var i = 0; i < proj.files.length; i++) {
+                var f = proj.files[i];
+                if (f.language === "c") {
+                    out("  arm-none-linux-gnueabi-gcc -O2 -Wall -I$(PalmPDK)/include -c " + f.name);
+                    var probs = checkFile(f);
+                    for (var j = 0; j < probs.length; j++) {
+                        probs[j].file = f;
+                        probs[j].project = proj;
+                        errors.push(probs[j]);
+                        out("  " + f.name + "(" + probs[j].line + "): error " +
+                            probs[j].code + ": " + probs[j].text);
+                    }
+                } else if (f.language === "makefile") {
+                    out("  make -f " + f.name);
+                }
+            }
+            if (errors.length === 0) {
+                out("  arm-none-linux-gnueabi-gcc -o " + proj.name.toLowerCase() +
+                    " *.o -L$(PalmPDK)/device/lib -lSDL -lGLESv2 -lpdl -lm");
+                out("========== Build: 1 succeeded, 0 failed (simulated) ==========");
+                stMsg.textContent = "Build succeeded (simulated)";
+            } else {
+                out("========== Build: 0 succeeded, 1 failed (simulated) ==========");
+                stMsg.textContent = "Build failed";
+            }
+            showErrors(errors);
+            return errors.length === 0;
+        }
+
         var enyo = {
             _kinds: [],
             kind: function (spec) {
@@ -712,11 +779,23 @@ var VisualStudio = (function () {
         };
 
         function run() {
+            var proj = solution.projects[solution.startupIndex];
+            if (proj.kind === "pdk" || proj.kind === "hybrid") {
+                emuScreen.innerHTML = "";
+                emuLog.innerHTML = "";
+                emuTitle.textContent = proj.name;
+                var dev = makeDevice(emuScreen, function (m) { emuPrint(m, "emu-err"); });
+                dev.addLabel("Native PDK binary — the in-app emulator only runs JavaScript.");
+                dev.addLabel("Build & deploy for real:");
+                dev.addLabel("./package.sh install templates/pdk-standalone");
+                showBottomTab("emulator");
+                emuPrint("native run is not simulated — it needs a device or the Palm emulator");
+                return;
+            }
             if (!build(false)) {
                 showBottomTab("errors");
                 return;
             }
-            var proj = solution.projects[solution.startupIndex];
             var src = "";
             for (var i = 0; i < proj.files.length; i++) {
                 if (proj.files[i].language === "javascript") {
