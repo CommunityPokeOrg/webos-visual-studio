@@ -1,0 +1,139 @@
+/* webOS shell chrome — status bar, wallpaper, cards, launcher, gesture area */
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+    height: 100%;
+    overflow: hidden;
+    font-family: "Prelude", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+#wallpaper {
+    position: absolute;
+    top: 0; right: 0; bottom: 0; left: 0;
+    background: radial-gradient(ellipse at 30% 20%, #3d5a80 0%, #16233a 70%, #0a1120 100%);
+}
+
+/* ---- status bar -------------------------------------------------------- */
+
+#statusbar {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 24px;
+    background: rgba(10, 14, 20, 0.85);
+    color: #d7dce4;
+    font-size: 12px;
+    line-height: 24px;
+    padding: 0 12px;
+    display: flex;
+    z-index: 40;
+}
+#sb-left { font-weight: bold; letter-spacing: 0.02em; }
+#sb-right { margin-left: auto; display: flex; gap: 10px; align-items: center; }
+.sb-icon { font-size: 11px; opacity: 0.9; }
+
+/* ---- stage & cards ------------------------------------------------------ */
+
+#stage {
+    position: absolute;
+    top: 24px; right: 0; bottom: 76px; left: 0;
+    overflow: hidden;
+}
+
+.card {
+    position: absolute;
+    top: 0; right: 0; bottom: 0; left: 0;
+    background: #e8e8ec;
+    display: none;
+    transition: transform 0.28s ease, border-radius 0.28s ease, opacity 0.2s ease;
+    overflow: hidden;
+}
+.card-on { display: block; }
+
+#stage.overview {
+    background: rgba(0, 0, 0, 0.35);
+}
+#stage.overview .card {
+    display: block;
+    border-radius: 18px;
+    border: 3px solid rgba(255, 255, 255, 0.55);
+    box-shadow: 0 14px 40px rgba(0, 0, 0, 0.55);
+    top: 6%; bottom: 12%;
+    cursor: pointer;
+}
+.card-closing {
+    transform: translateY(-120%) !important;
+    opacity: 0;
+}
+
+/* ---- just type ---------------------------------------------------------- */
+
+#justtype {
+    position: absolute;
+    top: 34px; left: 50%;
+    transform: translateX(-50%);
+    z-index: 45;
+    display: none;
+}
+#justtype-input {
+    width: 320px;
+    padding: 8px 14px;
+    border-radius: 18px;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    background: rgba(255, 255, 255, 0.92);
+    font-size: 14px;
+    outline: none;
+}
+
+/* ---- launcher / dock ----------------------------------------------------- */
+
+#launcher {
+    position: absolute;
+    left: 50%;
+    bottom: 14px;
+    transform: translateX(-50%);
+    background: rgba(20, 24, 32, 0.78);
+    border-radius: 22px;
+    padding: 8px 14px;
+    display: flex;
+    gap: 12px;
+    z-index: 40;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+}
+.dock-icon {
+    width: 46px; height: 46px;
+    border-radius: 12px;
+    border: none;
+    color: #fff;
+    font-size: 15px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: transform 0.12s ease;
+}
+.dock-icon:hover { transform: scale(1.12); }
+.icon-vs { background: linear-gradient(145deg, #5b2d91, #3a1c66); }
+.icon-settings { background: linear-gradient(145deg, #4a5568, #2d3748); }
+.icon-about { background: linear-gradient(145deg, #2b6cb0, #1a456e); font-style: italic; font-family: Georgia, serif; }
+
+/* ---- gesture area -------------------------------------------------------- */
+
+#gesturebar {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.18);
+    cursor: pointer;
+    z-index: 50;
+}
+#gesturebar:hover { background: rgba(255, 255, 255, 0.4); }
+
+/* ---- generic mini-apps ---------------------------------------------------- */
+
+.app-page { padding: 22px 26px; font-size: 14px; color: #222; }
+.app-h1 { font-size: 22px; font-weight: bold; border-bottom: 1px solid #bbb; padding-bottom: 8px; margin-bottom: 12px; }
+.app-note { color: #666; font-size: 12px; margin-bottom: 14px; }
+.app-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 4px; border-bottom: 1px solid #d8d8dc; }
+.app-k { font-weight: bold; }
+.app-v { color: #555; }

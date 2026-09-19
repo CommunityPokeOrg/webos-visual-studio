@@ -1,0 +1,14 @@
+{
+    "id": "com.communitypoke.visualstudio",
+    "version": "1.0.0",
+    "vendor": "CommunityPoke",
+    "vendorUrl": "https://github.com/CommunityPokeOrg/webos-visual-studio",
+    "type": "web",
+    "main": "index.html",
+    "title": "Visual Studio",
+    "icon": "icon.png",
+    "uiRevision": "2",
+    "noWindow": false,
+    "requiredMemory": 64,
+    "touchpanelAndKeyboard": true
+}
